@@ -1,6 +1,53 @@
-# TODO (CP2): file này quyết định thứ KHÔNG được copy vào image.
-# Bỏ sót .env = leak secret vào image. Bỏ sót .git = image phình to.
-# Bổ sung đủ các mục còn thiếu — xem tests/test_cp2.py để biết yêu cầu.
+# ═══════════════════════════════════════════════════════════════════
+# CP2 — Files to exclude from Docker build context
+#
+# Excluding secrets and caches prevents:
+#   - .env leaking into the image (API keys, passwords)
+#   - .git multiplying the image size
+#   - __pycache__/.pytest_cache bloating the image
+# ═══════════════════════════════════════════════════════════════════
 
+# Version control
 .git
-.gitignore
+.github
+
+# Virtual environments
+.venv
+venv
+env
+
+# Python caches
+__pycache__
+*.py[cod]
+*.pyc
+*.pyo
+*.egg-info
+*.egg
+dist
+build
+
+# Test caches
+.pytest_cache
+.tox
+htmlcov
+.coverage
+.coverage.*
+
+# IDE metadata
+.vscode
+.idea
+*.swp
+*.swo
+
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed at runtime)
+*.md
+!requirements.txt

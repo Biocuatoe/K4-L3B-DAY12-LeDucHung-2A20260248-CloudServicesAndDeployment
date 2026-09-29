@@ -1,34 +1,56 @@
 # ═══════════════════════════════════════════════════════════════════
 # CP2 — Containerization
 #
-# Dưới đây là Dockerfile "chạy được nhưng chưa production": một stage,
-# chạy bằng user root, không có health check, base image nặng.
-#
-# NHIỆM VỤ: sửa file này thành bản production-ready. Yêu cầu:
-#   [ ] Multi-stage build: stage `builder` cài dependency, stage runtime
-#       chỉ copy kết quả sang → image nhỏ hơn, không mang theo compiler.
-#       Cú pháp: `FROM python:3.11-slim AS builder`
-#   [ ] Base image slim (hoặc alpine), không dùng `python:3.11` bản đầy đủ
-#   [ ] COPY requirements.txt và pip install TRƯỚC khi COPY source code
-#       (Docker cache theo layer: sửa 1 dòng code không phải cài lại thư viện)
-#   [ ] Tạo user thường và chuyển sang bằng lệnh `USER` — container chạy
-#       root nghĩa là ai thoát được khỏi app cũng thành root trên host
-#   [ ] Có `HEALTHCHECK` gọi vào endpoint /health
-#   [ ] Đọc cổng từ biến môi trường PORT (cloud tự gán cổng, không cố định 8000)
-#
-# Kiểm tra:  pytest tests/test_cp2.py -v
-# Build thử: docker build -t day12-agent:prod .
-#            docker images day12-agent:prod     # xem dung lượng
+# Multi-stage production-ready Dockerfile:
+#   - Stage 1 (builder): creates venv with dependencies
+#   - Stage 2 (runtime): slim Python image, non-root user, healthcheck
 # ═══════════════════════════════════════════════════════════════════
 
-FROM python:3.11
+# ── Stage 1: Build dependencies ──────────────────────────────────
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-COPY . .
+# Copy requirements.txt first (layer caching: only rebuilds deps if requirements.txt changes)
+COPY requirements.txt .
 
-RUN pip install -r requirements.txt
+# Install dependencies in a virtual environment (preserves console scripts)
+RUN python -m venv /app/venv && \
+    /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8000
+# ── Stage 2: Runtime ──────────────────────────────────────────────
+FROM python:3.11-slim
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Create a non-root user for security
+RUN groupadd --gid 1000 appgroup && \
+    useradd --uid 1000 --gid appgroup --shell /bin/bash --create-home appuser
+
+WORKDIR /app
+
+# Copy virtual environment from builder stage
+COPY --from=builder /app/venv /app/venv
+
+# Set PATH to include the venv and PYTHONPATH
+ENV PATH="/app/venv/bin:$PATH"
+ENV PYTHONPATH=/app
+
+# Set default PORT if not provided
+ENV PORT=8000
+
+# Copy application source
+COPY app/ ./app/
+COPY utils/ ./utils/
+
+# Switch to non-root user
+USER appuser
+
+# Expose port from environment variable (cloud platforms set PORT dynamically)
+EXPOSE ${PORT}
+
+# Healthcheck: Docker pings /health to determine container health
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/health')" || exit 1
+
+# Run uvicorn in production mode (no reload)
+# Using shell form for proper environment variable expansion
+CMD /app/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
