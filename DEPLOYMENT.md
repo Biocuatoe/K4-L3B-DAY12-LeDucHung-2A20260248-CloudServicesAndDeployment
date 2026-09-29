@@ -92,6 +92,17 @@ done; echo
 - `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl
 - `screenshots/local-fallback-evidence.png` — bằng chứng chạy local (nếu dùng)
 
+## GitHub Actions — Required Secrets
+
+Thêm trong **GitHub repo → Settings → Secrets and Variables → Actions**:
+
+| Tên Secret | Mục đích |
+|---|---|
+| `RAILWAY_TOKEN` | Railway personal access token (từ Railway dashboard) |
+| `RAILWAY_SERVICE_ID` | Railway service ID (numeric, từ Railway dashboard) |
+
+**Không ghi giá trị thật vào file này hoặc workflow.**
+
 ## Phương Án Dự Phòng
 
 Ban đầu sử dụng phương án dự phòng LOCAL_FALLBACK trên docker compose.

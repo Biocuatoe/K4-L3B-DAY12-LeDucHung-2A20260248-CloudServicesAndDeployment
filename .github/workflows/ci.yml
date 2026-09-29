@@ -1,0 +1,61 @@
+# BONUS — CI/CD Pipeline with GitHub Actions
+#
+# Runs on every push and pull request.
+# Test job: installs deps, runs pytest (skipping test_cp5.py cloud tests),
+#          and builds Docker image.
+# Deploy job: only on push to main, after test job passes,
+#             uses GitHub Secrets for Railway deployment.
+#
+# Secrets the user must add in GitHub repo Settings → Secrets and Variables → Actions:
+#   RAILWAY_TOKEN      — Railway personal access token
+#   RAILWAY_SERVICE_ID — Railway service ID (numeric)
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest tests/ -v --ignore=tests/test_cp5.py
+
+      - name: Build Docker image
+        run: docker build -t day12-agent:${{ github.sha }} .
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Railway
+        uses: railway-deploy-action@v1
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service_id: ${{ secrets.RAILWAY_SERVICE_ID }}
