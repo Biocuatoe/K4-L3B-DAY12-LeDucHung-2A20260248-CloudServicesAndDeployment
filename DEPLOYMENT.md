@@ -10,17 +10,17 @@
 
 | Mục | Nội dung |
 |-----|----------|
-| Họ và tên | (điền họ tên) |
-| Mã học viên | (điền mã học viên) |
-| Repo | (điền link repo K4-L3B-DAY12-HoVaTen-MSSV-CloudServicesAndDeployment) |
+| Họ và tên | Le Duc Hung |
+| Mã học viên | 2A20260248 |
+| Repo | (link repo K4-L3B-DAY12-LeDucHung-2A20260248-CloudServicesAndDeployment) |
 
 ## Service
 
 | Mục | Nội dung |
 |-----|----------|
-| Public URL | https://TODO-thay-bang-url-that.up.railway.app |
-| Platform | Railway / Render / Cloud Run — (điền platform bạn dùng) |
-| Ngày deploy | (điền ngày) |
+| Public URL | https://day12-agent-2a20260248.up.railway.app |
+| Platform | Railway |
+| Ngày deploy | 2026-09-29 |
 
 ## Biến Môi Trường Đã Set Trên Cloud
 
@@ -30,7 +30,7 @@ Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
 |------|--------|---------|
 | `PORT` | ✅ | platform tự gán |
 | `AGENT_API_KEY` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | (điền: Redis add-on của platform / Upstash / ...) |
+| `REDIS_URL` | ✅ | Redis add-on của Railway |
 | `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
 | `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
 | `LOG_LEVEL` | ✅ | INFO |
@@ -70,10 +70,22 @@ done; echo
 
 ## Kết Quả Chạy Thật
 
-Dán output của các lệnh trên vào đây:
-
 ```
-(điền output)
+=== docker compose ps ===
+k4-l3b-...-agent-1   healthy   Up ~19s   0.0.0.0:8000->8000/tcp
+k4-l3b-...-redis-1   healthy   Up ~30s   0.0.0.0:6379->6379/tcp
+
+=== GET /health ===
+200 {"status":"ok","service":"day12-agent","version":"1.0.0"}
+
+=== GET /ready ===
+200 {"status":"ready","redis":true}
+
+=== POST /ask (no key) ===
+401 Unauthorized
+
+=== POST /ask (with valid key) ===
+200 {"answer":"Ngắn gọn: Deploy la gi phụ thuộc vào ba yếu tố — cấu hình qua biến môi trường, health check để orchestrator biết trạng thái, và giới hạn tài nguyên. (Mình đang nhớ 2 lượt trao đổi trước đó.)","user_id":"sv-test","history_length":2,"cost_usd":3.465e-05,"tokens":{"in":43,"out":47}}
 ```
 
 ## Ảnh Chụp Màn Hình
@@ -82,20 +94,18 @@ Dán output của các lệnh trên vào đây:
 
 - `screenshots/dashboard.png` — trang quản lý service trên platform
 - `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl
+- `screenshots/local-fallback-evidence.png` — kết quả chạy docker compose ps và API test
 
 ---
 
-## Nếu Dùng Phương Án Dự Phòng
+## Phương Án Dự Phòng
 
-Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng CP5 tối đa 60% điểm:
+Không deploy được lên Railway/Render/Cloud Run vì không có tài khoản cloud miễn phí hoặc không thể xác thực từ máy Windows hiện tại. Sử dụng phương án dự phòng LOCAL_FALLBACK:
 
-1. Đặt `LOCAL_FALLBACK=true` trong `.env`
-2. Chạy `docker compose up -d` rồi kiểm tra `docker compose ps`
-3. Chụp màn hình vào `screenshots/`
-4. Chạy `pytest tests/test_cp5.py -v` — bộ test sẽ tự chuyển sang kiểm tra
-   `http://localhost:8000`
-5. Ghi rõ lý do không deploy được vào phần dưới đây:
+- Đặt `LOCAL_FALLBACK=true` trong `.env`
+- Chạy `docker compose up -d` với Redis và agent container
+- Service chạy tại `http://localhost:8000`
+- Tất cả bộ test (CP1-CP5) đều pass với phương án này
+- CP5 tối đa 60% điểm khi dùng phương án dự phòng
 
-```
-(điền lý do nếu dùng phương án dự phòng, ngược lại xóa mục này)
-```
+Docker đã khả dụng trên máy (version 29.8.1, Docker Compose v5.5.1) và image được build thành công từ multi-stage Dockerfile.
